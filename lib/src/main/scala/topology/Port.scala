@@ -20,12 +20,12 @@ object Port {
 
   /** Port syntax */
   case class Syntax(
-    val instanceName: String,
-    val arrayName: String,
-    val index: Int
+      val instanceName: String,
+      val arrayName: String,
+      val index: Int
   )
 
-  def emptyMaps[A,B]: Map[Kind, Map[A,B]] = Map(
+  def emptyMaps[A, B]: Map[Kind, Map[A, B]] = Map(
     Input -> Map(),
     Output -> Map()
   )

@@ -13,8 +13,9 @@ object WriteJson {
 
   def indent(s: String) = "  " ++ s.replaceAll("\n", "\n  ")
 
-  def seq(delims: (String, String))(elts: Seq[String]) = 
-    if (elts.size == 0) s"${delims._1}${delims._2}" else 
+  def seq(delims: (String, String))(elts: Seq[String]) =
+    if (elts.size == 0) s"${delims._1}${delims._2}"
+    else
       s"${delims._1}\n" ++ indent(elts.mkString(",\n")) ++ s"\n${delims._2}"
 
   val array = seq("[", "]") _
@@ -33,7 +34,6 @@ object WriteJson {
     )
   }
 
-
   def writeConnections(top: Topology, cv: ColumnVector): String = {
     val portMap = ConstructPortMap.run(top, cv)
     def indexTupleToArray(it: ConstructPortMap.IndexTuple): String =
@@ -41,11 +41,11 @@ object WriteJson {
     def portToArray(kind: Port.Kind)(port: Port): String =
       indexTupleToArray(portMap(kind)(port))
     array(
-      top.connectionsTo.toVector.map({ 
-        case (from, to) => array(
+      top.connectionsTo.toVector.map({ case (from, to) =>
+        array(
           Vector(
             portToArray(Port.Output)(from),
-            portToArray(Port.Input)(to),
+            portToArray(Port.Input)(to)
           )
         )
       })
@@ -59,11 +59,11 @@ object WriteJson {
     type PortMap = Map[Port.Kind, Map[Port, IndexTuple]]
 
     case class State(
-      val top: Topology,
-      val columnIndex: Int = 0,
-      val elementIndex: Int = 0,
-      val portVectorIndex: Int = 0,
-      val portMap: PortMap = Port.emptyMaps
+        val top: Topology,
+        val columnIndex: Int = 0,
+        val elementIndex: Int = 0,
+        val portVectorIndex: Int = 0,
+        val portMap: PortMap = Port.emptyMaps
     )
 
     def run(top: Topology, cv: ColumnVector): PortMap =
@@ -74,32 +74,35 @@ object WriteJson {
         visitColumn(s1.copy(columnIndex = c.index))(c)
       })
 
-    override def visitColumn(s: State)(c: ColumnVector.Column): State = 
+    override def visitColumn(s: State)(c: ColumnVector.Column): State =
       c.elements.indices.foldLeft(s)((s1, i) => {
         visitElement(s1.copy(elementIndex = i))(c.elements(i))
       })
 
     override def visitElementWithKind(s: State)(
-      kind: Port.Kind,
-      e: ColumnVector.Element
+        kind: Port.Kind,
+        e: ColumnVector.Element
     ): State =
-      e.ports(kind).indices.foldLeft(s)((s1, i) => {
-        visitPortVector(s1.copy(portVectorIndex = i))(
-          kind,
-          e.instanceName,
-          e.ports(kind)(i)
-        )
-      })
+      e.ports(kind)
+        .indices
+        .foldLeft(s)((s1, i) => {
+          visitPortVector(s1.copy(portVectorIndex = i))(
+            kind,
+            e.instanceName,
+            e.ports(kind)(i)
+          )
+        })
 
     override def visitPortVector(s: State)(
-      kind: Port.Kind,
-      instanceName: String,
-      pv: ColumnVector.PortVector
+        kind: Port.Kind,
+        instanceName: String,
+        pv: ColumnVector.PortVector
     ) = {
       pv.indices.foldLeft(s)((s1, i) => {
         val ps = Port.Syntax(instanceName, pv.name, i)
         val port = s1.top.getPort(kind)(ps)
-        val indexTuple = (s1.columnIndex, s1.elementIndex, s1.portVectorIndex, i)
+        val indexTuple =
+          (s1.columnIndex, s1.elementIndex, s1.portVectorIndex, i)
         val map = s1.portMap(kind) + (port -> indexTuple)
         s1.copy(portMap = s1.portMap + (kind -> map))
       })
@@ -120,9 +123,11 @@ object WriteJson {
 
     override def visitElement(s: State)(e: ColumnVector.Element): State = {
       def ports(kind: Port.Kind) = {
-        val elts = e.ports(kind).map(pv => {
-          visitPortVector("")(kind, e.instanceName, pv)
-        })
+        val elts = e
+          .ports(kind)
+          .map(pv => {
+            visitPortVector("")(kind, e.instanceName, pv)
+          })
         array(elts)
       }
       obj(
@@ -133,9 +138,9 @@ object WriteJson {
     }
 
     override def visitPortVector(s: State)(
-      kind: Port.Kind,
-      instanceName: String,
-      pv: ColumnVector.PortVector
+        kind: Port.Kind,
+        instanceName: String,
+        pv: ColumnVector.PortVector
     ) = {
       val portNumbers = {
         val elts = pv.indices.map(_.toString)

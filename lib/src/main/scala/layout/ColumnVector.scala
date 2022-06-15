@@ -3,7 +3,7 @@ package fpl.layout
 import fpl.topology._
 
 case class ColumnVector(
-  columns: ColumnVector.Columns
+    columns: ColumnVector.Columns
 ) {
 
   def print = for (i <- 0 until columns.length) {
@@ -17,9 +17,12 @@ object ColumnVector {
 
   type Columns = Vector[Column]
 
-  def fromPlaceInstances(top: Topology)(columns: PlaceInstances.Columns): ColumnVector = {
+  def fromPlaceInstances(
+      top: Topology
+  )(columns: PlaceInstances.Columns): ColumnVector = {
     val indices = mapToIndexVector(columns)
-    val columns1 = indices.map(i => Column.fromPlaceInstances(top)(i, columns(i)))
+    val columns1 =
+      indices.map(i => Column.fromPlaceInstances(top)(i, columns(i)))
     ColumnVector(columns1)
   }
 
@@ -27,8 +30,8 @@ object ColumnVector {
     map.keys.toVector.sortWith(_ < _)
 
   case class Column(
-    index: Int,
-    elements: Vector[Element]
+      index: Int,
+      elements: Vector[Element]
   ) {
 
     def print = for (i <- 0 until elements.length) {
@@ -40,9 +43,11 @@ object ColumnVector {
 
   object Column {
 
-    def fromPlaceInstances(top: Topology)(index: Int, column: PlaceInstances.Column): Column = {
-      val elements = column.toVector.map(
-        name => Element.fromInstance(name, top.instances(name))
+    def fromPlaceInstances(
+        top: Topology
+    )(index: Int, column: PlaceInstances.Column): Column = {
+      val elements = column.toVector.map(name =>
+        Element.fromInstance(name, top.instances(name))
       )
       Column(index, elements)
     }
@@ -50,8 +55,8 @@ object ColumnVector {
   }
 
   case class Element(
-    instanceName: String,
-    ports: Map[Port.Kind, Vector[PortVector]]
+      instanceName: String,
+      ports: Map[Port.Kind, Vector[PortVector]]
   ) {
 
     def print = {
@@ -76,18 +81,24 @@ object ColumnVector {
       Element(
         name,
         Map(
-          Port.Input -> instance.portMaps(Port.Input).toVector.map(PortVector.fromPortMap),
-          Port.Output -> instance.portMaps(Port.Output).toVector.map(PortVector.fromPortMap)
+          Port.Input -> instance
+            .portMaps(Port.Input)
+            .toVector
+            .map(PortVector.fromPortMap),
+          Port.Output -> instance
+            .portMaps(Port.Output)
+            .toVector
+            .map(PortVector.fromPortMap)
         )
       )
 
   }
 
   case class PortVector(
-    name: String,
-    indices: Vector[Int]
+      name: String,
+      indices: Vector[Int]
   ) {
-    
+
     def print = {
       System.out.println(s"        Name: $name")
       val s = indices.foldLeft("")((s1, i) => s1 ++ s" $i")

@@ -5,7 +5,7 @@ import fpl.topology._
 object Layout {
 
   def replaceElement[T](v: Vector[T])(i: Int, e: T): Vector[T] =
-    (v.slice(0, i) :+ e) ++ v.slice(i +1, v.size)
+    (v.slice(0, i) :+ e) ++ v.slice(i + 1, v.size)
 
   /** Runs the layout algorithm */
   def run(top: Topology): ColumnVector = {
