@@ -8,9 +8,9 @@ trait ColumnVectorVisitor {
   type State
 
   def visitPortVector(s: State)(
-    kind: Port.Kind,
-    instanceName: String,
-    vector: ColumnVector.PortVector
+      kind: Port.Kind,
+      instanceName: String,
+      vector: ColumnVector.PortVector
   ): State = s
 
   def visitElement(s: State)(e: ColumnVector.Element): State = {
@@ -19,14 +19,15 @@ trait ColumnVectorVisitor {
   }
 
   def visitElementWithKind(s: State)(
-    kind: Port.Kind,
-    e: ColumnVector.Element
+      kind: Port.Kind,
+      e: ColumnVector.Element
   ): State =
-    e.ports(kind).foldLeft(s)((s, v) => {
-      visitPortVector(s)(kind, e.instanceName, v)
-    })
+    e.ports(kind)
+      .foldLeft(s)((s, v) => {
+        visitPortVector(s)(kind, e.instanceName, v)
+      })
 
-  def visitColumn(s: State)(column: ColumnVector.Column): State = 
+  def visitColumn(s: State)(column: ColumnVector.Column): State =
     column.elements.foldLeft(s)((s1, element) => visitElement(s1)(element))
 
   def visitColumnVector(s: State)(columnVector: ColumnVector): State =

@@ -13,11 +13,11 @@ object WritePic {
   val q = "\""
 
   case class State(
-    val top: Topology,
-    val cv: ColumnVector,
-    val instanceColumnIndices: Map[String, Int] = Map(),
-    val columnWidths: Map[Int, Double] = Map(),
-    val instanceHeights: Map[Port.Kind, Map[String, Double]] = Port.emptyMaps
+      val top: Topology,
+      val cv: ColumnVector,
+      val instanceColumnIndices: Map[String, Int] = Map(),
+      val columnWidths: Map[Int, Double] = Map(),
+      val instanceHeights: Map[Port.Kind, Map[String, Double]] = Port.emptyMaps
   )
 
   object InstanceColumnIndices extends ColumnVectorVisitor {
@@ -25,8 +25,10 @@ object WritePic {
     type State = WritePic.State
 
     override def visitColumn(s: State)(column: ColumnVector.Column): State =
-      column.elements.foldLeft(s)((s,e) => {
-        s.copy(instanceColumnIndices = s.instanceColumnIndices + (e.instanceName -> column.index))
+      column.elements.foldLeft(s)((s, e) => {
+        s.copy(instanceColumnIndices =
+          s.instanceColumnIndices + (e.instanceName -> column.index)
+        )
       })
 
   }
@@ -49,11 +51,13 @@ object WritePic {
     val minHeight = 0.75
 
     override def visitElementWithKind(s: State)(
-      kind: Port.Kind,
-      e: ColumnVector.Element
+        kind: Port.Kind,
+        e: ColumnVector.Element
     ): State = {
       val height = {
-        val computedHeight = e.ports(kind).foldLeft(portHeight)((h, pv) => h + getPortVectorHeight(pv))
+        val computedHeight = e
+          .ports(kind)
+          .foldLeft(portHeight)((h, pv) => h + getPortVectorHeight(pv))
         if (computedHeight >= minHeight) computedHeight else minHeight
       }
       val map = s.instanceHeights(kind) + (e.instanceName -> height)
@@ -70,11 +74,13 @@ object WritePic {
     val max = 55
 
     case class State(
-      val writePicState: WritePic.State,
-      val height: Double
+        val writePicState: WritePic.State,
+        val height: Double
     )
 
-    override def visitColumnVector(s: State)(columnVector: ColumnVector): State =
+    override def visitColumnVector(
+        s: State
+    )(columnVector: ColumnVector): State =
       columnVector.columns.foldLeft(s)((s1, column) => {
         val s2 = visitColumn(s)(column)
         if (s2.height > s1.height) s2 else s1
@@ -82,10 +88,17 @@ object WritePic {
 
     override def visitColumn(s: State)(column: ColumnVector.Column) = {
       val size = column.elements.size
-      val height = if (size == 0) 0 else
-        column.elements.foldLeft((size - 1) * EmitInstances.vSpace)((h, e) => {
-          h + EmitInstances.getInstanceHeight(s.writePicState, e.instanceName)
-        })
+      val height =
+        if (size == 0) 0
+        else
+          column.elements.foldLeft((size - 1) * EmitInstances.vSpace)(
+            (h, e) => {
+              h + EmitInstances.getInstanceHeight(
+                s.writePicState,
+                e.instanceName
+              )
+            }
+          )
       s.copy(height = height)
     }
 
@@ -102,8 +115,8 @@ object WritePic {
     val max = 39
 
     case class State(
-      val writePicState: WritePic.State,
-      val width: Double
+        val writePicState: WritePic.State,
+        val width: Double
     )
 
     override def visitColumn(s: State)(c: ColumnVector.Column) = {
@@ -115,10 +128,12 @@ object WritePic {
     override def visitColumnVector(s: State)(cv: ColumnVector): State = {
       val s1 = super.visitColumnVector(s)(cv)
       val size = cv.columns.size
-      val width = if (size == 0) s1.width else {
-        val hSpace = EmitInstances.getHSpace(s.writePicState)
-        s1.width + (size - 1) * hSpace
-      }
+      val width =
+        if (size == 0) s1.width
+        else {
+          val hSpace = EmitInstances.getHSpace(s.writePicState)
+          s1.width + (size - 1) * hSpace
+        }
       s.copy(width = width)
     }
 
@@ -148,7 +163,7 @@ object WritePic {
     val width = PictureWidth.get(s)(cv)
     val height = PictureHeight.get(s)(cv)
     System.out.println(
-s"""
+      s"""
 maxpswid=$width
 maxpsht=$height
 
@@ -163,7 +178,7 @@ define port { [
   box ${d}1 width $portWidth height $portHeight shaded "white"
 ] }"""
     )
-  
+
   }
 
   object EmitInstances extends ColumnVectorVisitor {
@@ -177,10 +192,9 @@ define port { [
       if (hs < 1) 1 else hs
     }
 
-    def getInstanceHeight(s: State, instanceName: String) = 
+    def getInstanceHeight(s: State, instanceName: String) =
       s.instanceHeights(Port.Input)(instanceName) +
-      s.instanceHeights(Port.Output)(instanceName)
-
+        s.instanceHeights(Port.Output)(instanceName)
 
     override def visitColumn(s: State)(c: ColumnVector.Column): State = {
       val hSpace = getHSpace(s)
@@ -193,7 +207,9 @@ move down $vSpace from Instance_${e.instanceName}.s""")
       })
       val e = c.elements(0)
       if (c.index + 1 < s.cv.columns.size)
-        System.out.println(s"move to Instance_${e.instanceName}.n + (${width + hSpace}, 0)")
+        System.out.println(
+          s"move to Instance_${e.instanceName}.n + (${width + hSpace}, 0)"
+        )
       else ()
       s
     }
@@ -205,39 +221,49 @@ move down $vSpace from Instance_${e.instanceName}.s""")
     type State = WritePic.State
 
     override def visitElementWithKind(s: State)(
-      kind: Port.Kind,
-      e: ColumnVector.Element
+        kind: Port.Kind,
+        e: ColumnVector.Element
     ) = {
       System.out.println("")
       kind match {
-        case Port.Input => System.out.println(s"move to Instance_${e.instanceName}.nw - (0, $labelHeight)")
-        case Port.Output => 
-          val vSpace = labelHeight + s.instanceHeights(Port.Input)(e.instanceName)
-          System.out.println(s"move to Instance_${e.instanceName}.ne - (0, ${vSpace})")
+        case Port.Input =>
+          System.out.println(
+            s"move to Instance_${e.instanceName}.nw - (0, $labelHeight)"
+          )
+        case Port.Output =>
+          val vSpace =
+            labelHeight + s.instanceHeights(Port.Input)(e.instanceName)
+          System.out.println(
+            s"move to Instance_${e.instanceName}.ne - (0, ${vSpace})"
+          )
       }
-      e.ports(kind).foldLeft(s)((s, v) => {
-        System.out.println("")
-        System.out.println(s"move down $portVSpace")
-        visitPortVector(s)(kind, e.instanceName, v)
-      })
+      e.ports(kind)
+        .foldLeft(s)((s, v) => {
+          System.out.println("")
+          System.out.println(s"move down $portVSpace")
+          visitPortVector(s)(kind, e.instanceName, v)
+        })
     }
 
     override def visitPortVector(s: State)(
-      kind: Port.Kind,
-      instanceName: String,
-      pv: ColumnVector.PortVector
+        kind: Port.Kind,
+        instanceName: String,
+        pv: ColumnVector.PortVector
     ) = {
       def index(indexPos: Int) = pv.indices(indexPos)
-      def label(indexPos: Int) = s"Port_${instanceName}_${pv.name}_${index(indexPos)}"
+      def label(indexPos: Int) =
+        s"Port_${instanceName}_${pv.name}_${index(indexPos)}"
       System.out.println(s"${label(0)}: port($q${index(0)}$q)")
       val str = kind match {
-        case Port.Input => s"$q \\fI${pv.name}\\fR$q at ${label(0)}.e ljust"
+        case Port.Input  => s"$q \\fI${pv.name}\\fR$q at ${label(0)}.e ljust"
         case Port.Output => s"$q\\fI${pv.name}\\fR $q at ${label(0)}.w rjust"
       }
       System.out.println(str)
       System.out.println(s"move to ${label(0)}.s")
       for (i <- 1 until pv.indices.length) {
-        System.out.println(s"${label(i)}: port($q${index(i)}$q) with .n at ${label(i-1)}.s")
+        System.out.println(
+          s"${label(i)}: port($q${index(i)}$q) with .n at ${label(i - 1)}.s"
+        )
       }
       s
     }
@@ -264,4 +290,3 @@ move down $vSpace from Instance_${e.instanceName}.s""")
   }
 
 }
-

@@ -5,7 +5,9 @@ import fpl.topology._
 object SortColumns {
 
   /** Sort the column of cv at index i */
-  def sort(top: Topology)(sortOn: Port.Kind)(cv: ColumnVector, i: Int): ColumnVector.Column = {
+  def sort(
+      top: Topology
+  )(sortOn: Port.Kind)(cv: ColumnVector, i: Int): ColumnVector.Column = {
     val portRanks = PortRanks.visitColumnVector(PortRanks.State(top))(cv)
     val c0 = cv.columns(i)
     val portVectorScores = PortVectorScores.visitColumn(
@@ -30,15 +32,17 @@ object SortColumns {
 
   private val findMax = find(_ > _) _
 
-  /** Computes a rank for each port.
-   *  Input ports: Ports that are down and to the right have higher rank.
-   *  Output ports: Ports that are down have higher rank. */
+  /** Computes a rank for each port. Input ports: Ports that are down and to the
+    * right have higher rank. Output ports: Ports that are down have higher
+    * rank.
+    */
   private object PortRanks extends ColumnVectorVisitor {
 
     case class State(
-      val top: Topology,
-      val ranks: Map[Port, Int] = Map(),
-      val nextRankMap: Map[Port.Kind, Int] = Map(Port.Input -> 0, Port.Output -> 0)
+        val top: Topology,
+        val ranks: Map[Port, Int] = Map(),
+        val nextRankMap: Map[Port.Kind, Int] =
+          Map(Port.Input -> 0, Port.Output -> 0)
     ) {
 
       def getRank(kind: Port.Kind)(ps: Port.Syntax): Int = {
@@ -59,7 +63,7 @@ object SortColumns {
         }
         kind match {
           case Port.Output => getOutputRanks(ps)
-          case Port.Input => getInputRanks(ps)
+          case Port.Input  => getInputRanks(ps)
         }
       }
 
@@ -72,9 +76,9 @@ object SortColumns {
     }
 
     override def visitPortVector(s: State)(
-      kind: Port.Kind,
-      instanceName: String,
-      vector: ColumnVector.PortVector
+        kind: Port.Kind,
+        instanceName: String,
+        vector: ColumnVector.PortVector
     ) =
       vector.indices.foldLeft(s)((s, index) => {
         val ps = Port.Syntax(instanceName, vector.name, index)
@@ -88,10 +92,10 @@ object SortColumns {
   }
 
   private case class ScoreInterval(
-    val min: Int,
-    val max: Int
+      val min: Int,
+      val max: Int
   ) extends Ordered[ScoreInterval] {
-    
+
     override def compare(that: ScoreInterval): Int =
       if (this.max < that.min) -1
       else if (this.min > that.max) 1
@@ -111,26 +115,30 @@ object SortColumns {
     type Scores = Map[(String, String), ScoreInterval]
 
     case class State(
-      val portRanks: PortRanks.State,
-      val scoreMap: Map[Port.Kind, Scores] = Port.emptyMaps
+        val portRanks: PortRanks.State,
+        val scoreMap: Map[Port.Kind, Scores] = Port.emptyMaps
     )
 
     override def visitPortVector(s: State)(
-      kind: Port.Kind,
-      instanceName: String,
-      vector: ColumnVector.PortVector
+        kind: Port.Kind,
+        instanceName: String,
+        vector: ColumnVector.PortVector
     ): State =
-      if (vector.indices.length == 0) s else {
+      if (vector.indices.length == 0) s
+      else {
         val ranks = vector.indices.flatMap(i => {
           val ps = Port.Syntax(instanceName, vector.name, i)
           s.portRanks.getConnectedRanks(kind, ps)
         })
-        val interval = if (ranks.size == 0) ScoreInterval.default else {
-          val min = findMin(ranks)
-          val max = findMax(ranks)
-          ScoreInterval(min, max)
-        }
-        val scores = s.scoreMap(kind) + ((instanceName, vector.name) -> interval)
+        val interval =
+          if (ranks.size == 0) ScoreInterval.default
+          else {
+            val min = findMin(ranks)
+            val max = findMax(ranks)
+            ScoreInterval(min, max)
+          }
+        val scores =
+          s.scoreMap(kind) + ((instanceName, vector.name) -> interval)
         s.copy(scoreMap = s.scoreMap + (kind -> scores))
       }
 
@@ -141,25 +149,29 @@ object SortColumns {
     type Scores = Map[String, ScoreInterval]
 
     case class State(
-      val portVectorScores: PortVectorScores.State,
-      val scoreMap: Map[Port.Kind, Scores] = Port.emptyMaps
+        val portVectorScores: PortVectorScores.State,
+        val scoreMap: Map[Port.Kind, Scores] = Port.emptyMaps
     )
 
     override def visitElementWithKind(s: State)(
-      kind: Port.Kind,
-      e: ColumnVector.Element
+        kind: Port.Kind,
+        e: ColumnVector.Element
     ): State = {
       val scores = s.scoreMap(kind)
       val portVectorScores = s.portVectorScores.scoreMap(kind)
-      val vectorScores = e.ports(kind).map(a => {
-        val pair = (e.instanceName, a.name)
-        portVectorScores(pair)
-      })
-      val interval = if (vectorScores.size == 0) ScoreInterval.default else {
-        val min = findMin(vectorScores.map(_.min))
-        val max = findMax(vectorScores.map(_.max))
-        ScoreInterval(min, max)
-      }
+      val vectorScores = e
+        .ports(kind)
+        .map(a => {
+          val pair = (e.instanceName, a.name)
+          portVectorScores(pair)
+        })
+      val interval =
+        if (vectorScores.size == 0) ScoreInterval.default
+        else {
+          val min = findMin(vectorScores.map(_.min))
+          val max = findMax(vectorScores.map(_.max))
+          ScoreInterval(min, max)
+        }
       val scores1 = scores + (e.instanceName -> interval)
       s.copy(scoreMap = s.scoreMap + (kind -> scores1))
     }
@@ -169,13 +181,17 @@ object SortColumns {
   private object SortInstances extends ColumnVectorTransformer {
 
     case class State(
-      val kind: Port.Kind,
-      val instanceScores: InstanceScores.State
+        val kind: Port.Kind,
+        val instanceScores: InstanceScores.State
     )
 
-    override def transformColumn(s: State)(column: ColumnVector.Column): ColumnVector.Column = {
+    override def transformColumn(
+        s: State
+    )(column: ColumnVector.Column): ColumnVector.Column = {
       val scores = s.instanceScores.scoreMap(s.kind)
-      val elements = column.elements.sortWith((a, b) => scores(a.instanceName) < scores(b.instanceName))
+      val elements = column.elements.sortWith((a, b) =>
+        scores(a.instanceName) < scores(b.instanceName)
+      )
       column.copy(elements = elements)
     }
 
@@ -184,8 +200,8 @@ object SortColumns {
   private object SortPortVectors extends ColumnVectorTransformer {
 
     case class State(
-      val kind: Port.Kind,
-      val portVectorScores: PortVectorScores.State
+        val kind: Port.Kind,
+        val portVectorScores: PortVectorScores.State
     )
 
     override def transformElement(s: State)(e: ColumnVector.Element) = {

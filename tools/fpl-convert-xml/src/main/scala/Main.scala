@@ -8,8 +8,7 @@ object Main {
     for {
       xmlFile <- parseXmlFile(fileName)
       asciiTable <- xmlFile.toAsciiTable
-    }
-    yield asciiTable.print
+    } yield asciiTable.print
   }
 
   def getFileName(args: Array[String]): String = {
@@ -32,12 +31,12 @@ object Main {
 
   def parseXmlFile(fileName: String): Result.Result[XmlReader.File] = {
     for {
-      elem <- try Right(scala.xml.XML.loadFile(fileName))
-      catch {
-        case e: Exception => Left(s"parse error in $fileName\n${e.toString}")
-      }
-    }
-    yield XmlReader.File(fileName, elem)
+      elem <-
+        try Right(scala.xml.XML.loadFile(fileName))
+        catch {
+          case e: Exception => Left(s"parse error in $fileName\n${e.toString}")
+        }
+    } yield XmlReader.File(fileName, elem)
   }
 
 }
